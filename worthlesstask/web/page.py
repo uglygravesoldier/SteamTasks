@@ -31,7 +31,7 @@ button{cursor:pointer}
 *::-webkit-scrollbar-thumb:hover{background:#31394a}
 *::-webkit-scrollbar-track{background:transparent}
 :focus-visible{outline:1px solid rgba(230,238,255,.6);outline-offset:2px;border-radius:8px;box-shadow:0 0 0 4px rgba(205,220,255,.12)}
-button:disabled{cursor:default;opacity:.35}
+button:disabled{cursor:default;opacity:.55}
 [hidden]{display:none!important}
 h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.2px;line-height:1.25}
 p{margin:0}
@@ -51,11 +51,8 @@ svg{display:block}
 .lang-btn[aria-pressed=true]{color:#0b0c0f;background:var(--gloss);box-shadow:0 2px 8px -3px rgba(220,232,255,.5)}
 .tabs{position:relative;display:flex;gap:2px;padding:3px;justify-self:center;border-radius:var(--pill);background:var(--surface-2);border:1px solid var(--line)}
 .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--ink-3);padding:7px 16px;border-radius:var(--pill);font-size:12.5px;font-weight:600;white-space:nowrap;transition:color .18s var(--ease)}
-.tab .i{transition:transform .25s var(--ease)}
 .tab:hover{color:var(--ink)}
-.tab:hover .i{transform:translateY(-1px)}
 .tab[aria-selected=true]{color:#0b0c0f}
-.tab[aria-selected=true] .i{transform:none}
 .tab-indicator{position:absolute;top:3px;left:0;height:calc(100% - 6px);width:0;border-radius:var(--pill);z-index:0;pointer-events:none;background:var(--gloss);box-shadow:0 6px 16px -8px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.9);transition:transform .35s var(--ease),width .35s var(--ease)}
 .chip{display:flex;align-items:center;gap:9px;padding:7px 13px;border-radius:var(--pill);background:var(--surface-2);border:1px solid var(--line);font-size:11px;color:var(--ink-2);white-space:nowrap}
 .chip .dot{width:7px;height:7px;border-radius:50%;background:#8fe3b4;box-shadow:0 0 10px rgba(143,227,180,.8);flex:none;animation:breathe 2.4s ease-in-out infinite}
@@ -77,20 +74,23 @@ main{max-width:1240px;margin:0 auto;padding:0 26px 90px}
 .status-line{min-height:20px;padding:8px 0 0;font-size:12.5px;color:var(--ink-2)}
 .alert{border:1px solid rgba(240,163,163,.4);border-left-width:3px;border-radius:var(--r-sm);background:var(--danger-soft);color:#f6c6c6;padding:11px 13px;font-size:12.5px;margin-bottom:14px;animation:fadeUp .3s var(--ease) both}
 .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line-2);background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 60%),var(--surface-2);color:var(--ink);border-radius:var(--r-sm);padding:0 14px;font-size:12.5px;font-weight:600;min-height:34px;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
-.btn:hover:not(:disabled){background:var(--surface-3);border-color:rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 0 14px -6px rgba(205,220,255,.35)}
+.btn:hover:not(:disabled){background:var(--surface-3);border-color:rgba(255,255,255,.26);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 0 14px -6px rgba(205,220,255,.4)}
 .btn:active:not(:disabled){background:var(--surface-4)}
 .btn .i{color:var(--ink-2)}
-.btn:hover:not(:disabled) .i{color:var(--ink)}
+.btn:hover:not(:disabled) .i{color:#fff}
 .btn.primary{background:var(--gloss);border-color:transparent;color:#0b0c0f;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 22px -10px rgba(215,228,255,.55)}
-.btn.primary:hover:not(:disabled){background:linear-gradient(168deg,#ffffff 4%,#e6eaf1 60%,#d2d8e2 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 26px -10px rgba(215,228,255,.7)}
+.btn.primary:hover:not(:disabled){background:linear-gradient(168deg,#ffffff 4%,#e6eaf1 60%,#d2d8e2 100%);color:#0b0c0f;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 26px -10px rgba(215,228,255,.7)}
 .btn.primary .i{color:#2a3140}
-.btn.danger{background:var(--danger-soft);border-color:rgba(240,163,163,.35);color:var(--danger)}
-.btn.danger:hover:not(:disabled){background:rgba(240,163,163,.18);box-shadow:0 0 14px -6px rgba(240,163,163,.4)}
+.btn.primary:hover:not(:disabled) .i{color:#10141c}
+.btn.danger{background:rgba(240,163,163,.12);border-color:rgba(240,163,163,.4);color:#f6b3b3}
+.btn.danger:hover:not(:disabled){background:rgba(240,163,163,.24);border-color:rgba(240,163,163,.6);color:#ffd6d6;box-shadow:0 0 16px -6px rgba(240,163,163,.55)}
+.btn.danger:hover:not(:disabled) .i{color:#ffd6d6}
+.btn.danger:disabled{background:rgba(240,163,163,.06);border-color:rgba(240,163,163,.2);color:#c98f8f}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-3);box-shadow:none}
 .btn.ghost:hover:not(:disabled){color:var(--ink);background:var(--surface-2)}
 .btn.small{min-height:28px;padding:0 10px;font-size:12px;border-radius:7px}
 .btn.wide{width:100%}
-.btn.is-running{border-color:rgba(205,220,255,.35);background:rgba(205,220,255,.1);color:#e8eeff;opacity:1;box-shadow:0 0 18px -6px rgba(205,220,255,.5);animation:livePulse 2.2s ease-out infinite}
+.btn.is-running{border-color:rgba(205,220,255,.4);background:rgba(205,220,255,.12);color:#e8eeff;opacity:1;box-shadow:0 0 20px -8px rgba(205,220,255,.55);animation:livePulse 3.2s ease-in-out infinite}
 .btn.is-running .i{color:#e8eeff}
 input,select{background:var(--bg);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:0 12px;height:36px;min-width:0;transition:border-color .16s var(--ease),box-shadow .16s var(--ease)}
 input::placeholder{color:var(--ink-4)}
@@ -127,7 +127,7 @@ input:focus,select:focus{outline:none;border-color:rgba(225,235,255,.55);box-sha
 .game-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
 .badge{flex:none;padding:3px 10px;border:1px solid rgba(143,227,180,.35);border-radius:999px;background:var(--ok-soft);color:var(--ok);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .badge.warn{border-color:rgba(221,196,145,.35);background:var(--warn-soft);color:var(--warn)}
-.badge.run{border-color:rgba(205,220,255,.4);background:rgba(205,220,255,.1);color:#dfe8ff;animation:halo 2.8s ease-out infinite}
+.badge.run{border-color:rgba(205,220,255,.45);background:rgba(205,220,255,.12);color:#dfe8ff;animation:halo 3.4s ease-in-out infinite}
 .badge.sub{border-color:var(--line-2);background:var(--surface-2);color:var(--ink-2);text-transform:none;letter-spacing:.01em;font-weight:600}
 .badge.quest{border-color:rgba(205,220,255,.35);background:rgba(205,220,255,.08);color:#dfe8ff;text-transform:none;letter-spacing:.01em;font-weight:650}
 .reason{font-size:12px;color:var(--warn);padding:9px 11px;flex:1 1 100%;border:1px solid rgba(221,196,145,.25);border-left:3px solid rgba(221,196,145,.5);border-radius:var(--r-sm);background:var(--warn-soft)}
@@ -249,10 +249,10 @@ input:focus,select:focus{outline:none;border-color:rgba(225,235,255,.55);box-sha
 @keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 @keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
-@keyframes halo{0%{box-shadow:0 0 0 0 rgba(205,220,255,.3)}70%{box-shadow:0 0 0 8px rgba(205,220,255,0)}100%{box-shadow:0 0 0 0 rgba(205,220,255,0)}}
+@keyframes halo{0%,100%{box-shadow:0 0 12px -6px rgba(205,220,255,.45)}50%{box-shadow:0 0 18px -6px rgba(205,220,255,.7)}}
 @keyframes sweep{to{background-position:-220% 0}}
 @keyframes counterPop{0%{transform:scale(.86)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
-@keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(205,220,255,.28)}50%{box-shadow:0 0 0 8px rgba(205,220,255,0)}}
+@keyframes livePulse{0%,100%{box-shadow:0 0 20px -8px rgba(205,220,255,.55)}50%{box-shadow:0 0 26px -8px rgba(205,220,255,.75)}}
 @media (max-width:980px){.sum-grid{grid-template-columns:minmax(0,1fr)}.nav{grid-template-columns:1fr auto;row-gap:10px;padding:11px 16px}.tabs{grid-row:2;grid-column:1/-1;justify-self:stretch;width:100%}.tab{flex:1;justify-content:center;padding:8px 10px}main{padding:0 16px 96px}}
 @media (max-width:560px){.brand-name{display:none}.session-top .session-actions{width:100%}.footer-row{flex-direction:column;align-items:stretch}.footer-row .btn{width:100%}.queue-actions{flex-direction:column}.search-row{flex-direction:column}.head{padding:10px 14px}.body{padding:14px}.game{padding:12px}.game-actions{margin-left:0;width:100%;justify-content:flex-start}.exe-row{flex-direction:column}.modal-actions{flex-direction:column-reverse}.modal-actions .btn{width:100%}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
@@ -265,7 +265,7 @@ input:focus,select:focus{outline:none;border-color:rgba(225,235,255,.55);box-sha
 <symbol id="ic-session" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.9 18.7A8.3 8.3 0 1 1 18.7 13.9"/><circle cx="12" cy="12" r="2.5"/></symbol>
 <symbol id="ic-queue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 7.4h9.6"/><path d="M7 12h9.6"/><path d="M4.2 16.6h9.6"/><path d="M18.4 5.8v12.4"/></symbol>
 <symbol id="ic-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 5.6 18.6 11.6a.45.45 0 0 1 0 .8L8.4 18.4a.45.45 0 0 1-.7-.4V6a.45.45 0 0 1 .7-.4z"/></symbol>
-<symbol id="ic-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="ic-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor" stroke="none"/></symbol>
 <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 7.4h14.8"/><path d="M9.4 7.4V5.2h5.2v2.2"/><path d="M6.6 7.4 7.5 18.6a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l.9-11.2"/><path d="M10.5 10.8v5.6M13.5 10.8v5.6"/></symbol>
 <symbol id="ic-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 5.2 18.8 9.4 8.6 19.6 4.2 20.8 5.4 16.4z"/><path d="M12.8 7 17 11.2"/></symbol>
 <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.6v12.8"/><path d="M5.6 12h12.8"/></symbol>
