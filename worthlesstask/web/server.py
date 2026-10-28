@@ -5,6 +5,7 @@ import json
 import os
 import re
 import threading
+import time
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,6 +26,11 @@ from .page import PAGE
 
 #: Paths whose query string can hold something the user typed.
 _SENSITIVE_QUERY = ("/api/search",)
+
+#: When the last browser tab sends its goodbye beacon, the backend waits this
+#: long before exiting — long enough for a page reload (which also fires the
+#: beacon) to come back and cancel it, short enough to feel immediate.
+SHUTDOWN_GRACE_S = 5.0
 
 
 def redact_request(line: str) -> str:
@@ -61,6 +67,19 @@ class Dashboard:
         self._mutation_lock = threading.RLock()
         self._quests_cache: list[dict] = []
         self._quests_ts: float = 0.0
+        self._shutdown_lock = threading.Lock()
+        self._shutdown_at: float | None = None
+
+    def mark_alive(self) -> None:
+        """A live panel is talking to us: cancel any pending self-retirement."""
+        with self._shutdown_lock:
+            self._shutdown_at = None
+
+    def request_shutdown(self) -> None:
+        """The page said goodbye. Exit after the grace period unless it returns."""
+        with self._shutdown_lock:
+            if self._shutdown_at is None:
+                self._shutdown_at = time.monotonic() + SHUTDOWN_GRACE_S
 
     def _active_quests(self, force: bool = False) -> list[dict]:
         import time as _time
@@ -127,6 +146,59 @@ class Dashboard:
             )
         self._active_quests(force=True)
         return {"sync": report, "state": self.status()}
+
+    def auto_queue_quests(self, minutes: int = 15) -> dict:
+        """Add the games the live quests need and line them up in the queue.
+
+        Active (enrolled, unfinished) quests name their applications by id. Every
+        id already in the library maps to its slug; every other id is looked up
+        in the catalogue and added through the same path the search panel uses.
+        New slugs are appended to the queue, so pressing Start afterwards walks
+        through exactly the games the quests want.
+        """
+        quests = self._active_quests(force=True)
+        unfinished = [q for q in quests if not q.get("is_completed")]
+        enrolled = [q for q in unfinished if q.get("is_enrolled")]
+        targets = enrolled or unfinished
+        with self._catalog_lock:
+            index = self.resolver.index
+
+        by_app: dict[str, str] = {}
+        for entry in self.library.entries():
+            for key in (entry.application_id, getattr(entry, "carrier_app_id", None)):
+                if key:
+                    by_app[str(key)] = entry.slug
+
+        slugs = list(self.library.queue)
+        added: list[str] = []
+        queued: list[str] = []
+        skipped: list[str] = []
+        with self._mutation_lock:
+            for quest in targets:
+                ids = {str(x) for x in (quest.get("accepted_app_ids") or ())}
+                if quest.get("primary_app_id"):
+                    ids.add(str(quest["primary_app_id"]))
+                for app_id in sorted(ids):
+                    slug = by_app.get(app_id)
+                    if slug is None:
+                        candidate = index.by_id(app_id)
+                        if candidate is None:
+                            skipped.append(app_id)
+                            continue
+                        entry = self.add_game(candidate.name, application_id=app_id)
+                        slug = entry["slug"]
+                        by_app[app_id] = slug
+                        added.append(entry["game_name"])
+                    if slug not in slugs:
+                        slugs.append(slug)
+                        queued.append(slug)
+            if slugs:
+                # One write for the whole queue, not one per game.
+                self.library.update_many(
+                    {slug: {"minutes": minutes} for slug in slugs})
+                self.manager.set_queue(slugs)
+        return {"auto": {"added": added, "queued": queued, "skipped": skipped},
+                "state": self.status()}
 
     def start_scheduler(self, start_slug=None):
         with self._scheduler_lock:
@@ -362,8 +434,10 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         if self.command in ("GET", "HEAD"):
             if path in ("/", "/index.html"):
+                self.dashboard.mark_alive()
                 return self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
             if path == "/api/state":
+                self.dashboard.mark_alive()
                 return self._json(self.dashboard.status())
             if path == "/api/health":
                 return self._json({"ok": True, "application": "worthlesstask", "version": APP_VERSION,
@@ -412,6 +486,15 @@ class Handler(BaseHTTPRequestHandler):
                 filename = urllib.parse.unquote(self.headers.get("X-Filename", "icon.ico"))
                 return self._json(self.dashboard.library.set_icon(slug, self._read_body(), filename).to_dict())
             payload = self._read_json()
+            if path == "/api/shutdown":
+                # The tab said goodbye (pagehide beacon). The grace window lets
+                # a reload or a second tab cancel it; the watcher thread in
+                # serve() pulls the trigger when it expires.
+                self.dashboard.request_shutdown()
+                return self._json({"ok": True})
+            if path == "/api/heartbeat":
+                self.dashboard.mark_alive()
+                return self._json({"ok": True})
             if path == "/api/games":
                 return self._json(self.dashboard.add_game(payload.get("game_name", ""),
                                                           payload.get("application_id"),
@@ -463,6 +546,12 @@ class Handler(BaseHTTPRequestHandler):
                 if path == "/api/quests/sync":
                     auto_add = bool(payload.get("auto_add", True))
                     return self._json(self.dashboard.sync_quests(auto_add=auto_add))
+                if path == "/api/quests/auto":
+                    minutes = payload.get("minutes")
+                    if minutes is not None and (type(minutes) is not int or not 1 <= minutes <= 1440):
+                        raise ValueError("Укажите целое число минут от 1 до 1440")
+                    return self._json(self.dashboard.auto_queue_quests(
+                        minutes=minutes if minutes is not None else 15))
         self._error(404, "Не найдено")
 
     def _dispatch(self):
@@ -495,13 +584,27 @@ def serve(dashboard, host=DEFAULT_HOST, port=DEFAULT_PORT, stop_event=None, on_r
     print(f"worthlesstask dashboard: {url}", flush=True)
     if on_ready:
         on_ready(url)
+    owns_stop = False
+    if stop_event is None:
+        stop_event = threading.Event()
+        owns_stop = True
+
+    def _shutdown_watch():
+        # The page retires the backend through /api/shutdown when its last tab
+        # goes away; a heartbeat or a fresh page load cancels it in time.
+        while not stop_event.wait(0.25):
+            with dashboard._shutdown_lock:
+                at = dashboard._shutdown_at
+            if at is not None and time.monotonic() >= at:
+                dashboard.log.info("no live dashboard tab; shutting down")
+                stop_event.set()
+
+    watcher = threading.Thread(target=_shutdown_watch, name="shutdown-watch", daemon=True)
+    watcher.start()
     try:
-        if stop_event is None:
-            server.serve_forever()
-        else:
-            server.timeout = .5
-            while not stop_event.is_set():
-                server.handle_request()
+        server.timeout = .5
+        while not stop_event.is_set():
+            server.handle_request()
     except KeyboardInterrupt:
         pass
     finally:

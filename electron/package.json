@@ -1,0 +1,13 @@
+{
+  "name": "worthlesstask-shell",
+  "version": "1.0.0",
+  "description": "Trimmed Electron window around the local worthlesstask dashboard",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

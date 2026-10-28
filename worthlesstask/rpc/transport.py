@@ -3,6 +3,13 @@
 Windows uses ``\\\\.\\pipe\\discord-ipc-N``, everything else an AF_UNIX socket at
 ``$XDG_RUNTIME_DIR/discord-ipc-N``.
 
+Client shells (Vencord, BetterDiscord, PTB/Canary, arRPC bridges) keep the same
+IPC contract, but they can publish more instances than the stock client and can
+briefly report ``ERROR_PIPE_BUSY`` while the client restarts. Discovery therefore
+enumerates the whole ``\\\\.\\pipe\\`` namespace for ``discord-ipc-*`` names in
+addition to the standard 0..9 range, and a busy pipe is waited on and retried
+once instead of being skipped.
+
 The Windows transport goes through ``ctypes`` rather than ``open()`` because a
 synchronous pipe handle serialises I/O. Measured against the live Discord pipe on
 Windows 11 / CPython 3.13: with a blocking read pending in a reader thread, a
@@ -102,8 +109,11 @@ if os.name == "nt":
     OPEN_EXISTING = 3
     FILE_FLAG_OVERLAPPED = 0x40000000
     ERROR_IO_PENDING = 997
+    ERROR_PIPE_BUSY = 231
+    ERROR_NO_MORE_FILES = 18
     WAIT_OBJECT_0 = 0
     WAIT_TIMEOUT = 258
+    INVALID_HANDLE = wintypes.HANDLE(-1).value
 
     class _OVERLAPPED(ctypes.Structure):
         _fields_ = [
@@ -141,6 +151,29 @@ if os.name == "nt":
     _kernel32.CancelIoEx.restype = wintypes.BOOL
     _kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     _kernel32.CloseHandle.restype = wintypes.BOOL
+    _kernel32.WaitNamedPipeW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD]
+    _kernel32.WaitNamedPipeW.restype = wintypes.BOOL
+
+    class _WIN32_FIND_DATAW(ctypes.Structure):
+        _fields_ = [
+            ("dwFileAttributes", wintypes.DWORD),
+            ("ftCreationTime", wintypes.FILETIME),
+            ("ftLastAccessTime", wintypes.FILETIME),
+            ("ftLastWriteTime", wintypes.FILETIME),
+            ("nFileSizeHigh", wintypes.DWORD),
+            ("nFileSizeLow", wintypes.DWORD),
+            ("dwReserved0", wintypes.DWORD),
+            ("dwReserved1", wintypes.DWORD),
+            ("cFileName", wintypes.WCHAR * 260),
+            ("cAlternateFileName", wintypes.WCHAR * 14),
+        ]
+
+    _kernel32.FindFirstFileW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(_WIN32_FIND_DATAW)]
+    _kernel32.FindFirstFileW.restype = wintypes.HANDLE
+    _kernel32.FindNextFileW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_WIN32_FIND_DATAW)]
+    _kernel32.FindNextFileW.restype = wintypes.BOOL
+    _kernel32.FindClose.argtypes = [wintypes.HANDLE]
+    _kernel32.FindClose.restype = wintypes.BOOL
 
 class WindowsPipeTransport(Transport):
     """Named pipe opened with ``FILE_FLAG_OVERLAPPED``.
@@ -150,17 +183,25 @@ class WindowsPipeTransport(Transport):
     """
 
     def __init__(self, path: str, io_timeout_ms: int = DEFAULT_IO_TIMEOUT_MS) -> None:
-        handle = _kernel32.CreateFileW(
-            path,
-            GENERIC_READ | GENERIC_WRITE,
-            0,  # no sharing: one client per pipe instance
-            None,
-            OPEN_EXISTING,
-            FILE_FLAG_OVERLAPPED,
-            None,
-        )
-        if handle == wintypes.HANDLE(-1).value or not handle:
+        handle = None
+        # A busy pipe means the client is alive but every instance is taken at
+        # this instant (typical while a shell mod reconnects). Wait for a free
+        # instance once before treating the endpoint as unavailable.
+        for attempt in range(2):
+            handle = _kernel32.CreateFileW(
+                path,
+                GENERIC_READ | GENERIC_WRITE,
+                0,  # no sharing: one client per pipe instance
+                None,
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                None,
+            )
+            if handle != INVALID_HANDLE and handle:
+                break
             error = ctypes.get_last_error()
+            if error == ERROR_PIPE_BUSY and attempt == 0 and _kernel32.WaitNamedPipeW(path, 2_000):
+                continue
             raise OSError(error, f"CreateFileW failed for {path}", path)
         self._handle = handle
         self.name = path
@@ -244,8 +285,33 @@ class WindowsPipeTransport(Transport):
             pass
 
 # Discovery
+def _enumerate_pipe_namespace() -> list[str]:
+    """Every pipe name Windows currently publishes (Windows only)."""
+    if os.name != "nt":
+        return []
+    data = _WIN32_FIND_DATAW()
+    handle = _kernel32.FindFirstFileW(r"\\.\pipe\*", ctypes.byref(data))
+    if handle == INVALID_HANDLE or not handle:
+        return []
+    names: list[str] = []
+    try:
+        while True:
+            names.append(data.cFileName)
+            if not _kernel32.FindNextFileW(handle, ctypes.byref(data)):
+                break
+    finally:
+        _kernel32.FindClose(handle)
+    return names
+
 def _windows_pipe_paths() -> list[str]:
-    return [rf"\\.\pipe\{IPC_PIPE_PREFIX}{i}" for i in IPC_RANGE]
+    standard = [rf"\\.\pipe\{IPC_PIPE_PREFIX}{i}" for i in IPC_RANGE]
+    # Shells and bridges (Vencord, BetterDiscord, arRPC, sandboxed clients) may
+    # publish instance names outside the stock 0..9 range. Anything in the
+    # namespace that answers to the discord-ipc prefix is worth a try.
+    extra = [rf"\\.\pipe\{name}" for name in _enumerate_pipe_namespace()
+             if name.startswith(IPC_PIPE_PREFIX)]
+    seen = set(standard)
+    return standard + [p for p in extra if not (p in seen or seen.add(p))]
 
 def _posix_socket_dirs() -> list[str]:
     home = Path.home()

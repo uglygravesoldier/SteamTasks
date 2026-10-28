@@ -237,33 +237,34 @@ DEFAULT_HEIGHT = 520
 MIN_WIDTH = 660
 
 # Palette (RGB tuples; GDI wants BGR, _rgb does the swap)
-# Deep matte black with one muted burnt-orange accent. Every text colour is a
-# solid ink, never a blend, so it stays readable. No gradients, no glows, no
-# decorative stripes: depth comes only from a faint drop shadow.
-COLOR_BG = (10, 9, 8)
-COLOR_CARD = (16, 14, 11)
-COLOR_CARD_EDGE = (70, 56, 40)
-COLOR_SIDE = (16, 14, 11)
-COLOR_LINE = (48, 40, 31)
-COLOR_PANEL = (16, 14, 11)
-COLOR_PANEL_EDGE = (64, 52, 38)
+# Matte black surfaces with a glossy white accent and a cool white glow — the
+# same language as the local dashboard. Every text colour is a solid ink, never
+# a blend, so it stays readable. Depth comes from thin cool outlines and a
+# faint drop shadow, not from color.
+COLOR_BG = (8, 9, 12)
+COLOR_CARD = (14, 16, 20)
+COLOR_CARD_EDGE = (56, 62, 74)
+COLOR_SIDE = (11, 12, 16)
+COLOR_LINE = (38, 43, 52)
+COLOR_PANEL = (20, 23, 29)
+COLOR_PANEL_EDGE = (58, 64, 76)
 #: Thin outlines around panels, tiles and the card edge. Visible but quiet.
-COLOR_FRAME = (70, 56, 40)
+COLOR_FRAME = (56, 62, 74)
 #: The single restrained accent for thin lines and small glyphs.
-COLOR_OUTLINE = (150, 95, 40)
-COLOR_ACCENT = (160, 78, 18)
-COLOR_ACCENT_HOT = (180, 90, 22)
-COLOR_ACCENT_PRESS = (126, 60, 10)
-COLOR_TITLE = (240, 234, 226)
-COLOR_BODY = (214, 205, 192)
-COLOR_MUTED = (168, 154, 134)
-COLOR_OK = (240, 138, 52)
-COLOR_BUSY = (255, 196, 110)
-COLOR_ERROR = (243, 84, 74)
-COLOR_WARN = (255, 170, 70)
-COLOR_CLOSE_HOT = (200, 60, 50)
-COLOR_BUTTON_TEXT = (255, 255, 255)
-COLOR_HOVER_FILL = (32, 27, 22)
+COLOR_OUTLINE = (205, 220, 255)
+COLOR_ACCENT = (232, 237, 245)
+COLOR_ACCENT_HOT = (248, 250, 253)
+COLOR_ACCENT_PRESS = (198, 206, 220)
+COLOR_TITLE = (243, 245, 249)
+COLOR_BODY = (174, 181, 193)
+COLOR_MUTED = (126, 134, 148)
+COLOR_OK = (143, 227, 180)
+COLOR_BUSY = (205, 220, 255)
+COLOR_ERROR = (240, 163, 163)
+COLOR_WARN = (221, 196, 145)
+COLOR_CLOSE_HOT = (240, 110, 110)
+COLOR_BUTTON_TEXT = (11, 12, 15)
+COLOR_HOVER_FILL = (28, 32, 39)
 
 
 class WindowError(worthlesstaskError):
@@ -1825,7 +1826,7 @@ class PresenceWindow:
         block = lay["error"]
         has_error = bool(self._raw_error())
         radius = self._scale_for(10)
-        fill = (34, 22, 19) if has_error else _blend(COLOR_HOVER_FILL, COLOR_PANEL, 0.28)
+        fill = (46, 26, 28) if has_error else _blend(COLOR_HOVER_FILL, COLOR_PANEL, 0.28)
         edge = _blend(COLOR_ERROR, COLOR_FRAME, 0.45) if has_error else COLOR_PANEL_EDGE
         self._panel(hdc, block, radius, fill, edge)
         bar_color = COLOR_ERROR if has_error else (COLOR_OK if self.supervisor.stats.connected else COLOR_LINE)
@@ -1933,13 +1934,13 @@ class PresenceWindow:
             edge = COLOR_OUTLINE
         elif hot:
             fill = COLOR_ACCENT_HOT
-            edge = COLOR_OK
+            edge = COLOR_OUTLINE
         elif running:
             fill = _blend(COLOR_ACCENT, COLOR_CARD, 0.78)
             edge = COLOR_OUTLINE
         else:
             fill = COLOR_ACCENT
-            edge = COLOR_OK
+            edge = COLOR_OUTLINE
         radius = (rect[3] - rect[1]) // 2
         self._fill_round(hdc, rect, radius, self._brush(fill))
         self._stroke_round(hdc, rect, radius, edge, 1)
@@ -2033,7 +2034,7 @@ class PresenceWindow:
             radius = (rect[3] - rect[1]) // 2
             if active:
                 fill = _blend(COLOR_ACCENT, COLOR_CARD, 0.28 + 0.15 * fade)
-                edge = _blend(COLOR_OK, COLOR_OUTLINE, fade)
+                edge = _blend(COLOR_OUTLINE, COLOR_FRAME, 0.35 * (1.0 - fade))
                 color = COLOR_TITLE
                 self._fill_round(hdc, rect, radius, self._brush(fill))
             else:
